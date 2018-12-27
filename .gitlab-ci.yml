@@ -1,0 +1,14 @@
+---
+stages:
+    - build
+
+build:
+    stage: build
+    image: golang
+    tags:
+        - docker
+    script:
+        - go version
+        - go get github.com/go-ini/ini
+        - go get github.com/olekukonko/tablewriter
+        - go build InventoryVisualizer.go
