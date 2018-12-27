@@ -1,0 +1,10 @@
+# Sourc: https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html
+
+[webservers]
+foo.example.com
+bar.example.com
+
+[dbservers]
+one.example.com
+two.example.com
+three.example.com
