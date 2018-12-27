@@ -15,4 +15,4 @@ build:
         # Build the binary
         - go build InventoryVisualizer.go
         # Run some tests
-        - "./InventoryVisualizer test_inventories/{}"
+        - "ls -1 test_inventories | xargs -i ./InventoryVisualizer test_inventories/{}"
