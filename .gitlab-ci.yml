@@ -15,4 +15,4 @@ build:
         # Build the binary
         - go build InventoryVisualizer.go
         # Run some tests
-        - ./InventoryVisualizer test_inventories/group_vars
+        - "./InventoryVisualizer test_inventories/{}"

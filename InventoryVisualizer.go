@@ -6,7 +6,7 @@ import (
     "strings"
     "sort"
     // "io"
-    "bytes"
+    // "bytes"
 
     "github.com/go-ini/ini"
     "github.com/olekukonko/tablewriter"
@@ -19,12 +19,11 @@ const (
 )
 
 func main() {
-    buf := &bytes.Buffer{}
+    BuildTable(ParseInventoryFilePath(), tablewriter.NewWriter(os.Stdout))
 
-    //BuildTable(ParseInventoryFilePath(), tablewriter.NewWriter(os.Stdout))
-    BuildTable(ParseInventoryFilePath(), tablewriter.NewWriter(buf))
-
-    fmt.Println(buf.String())
+    // buf := &bytes.Buffer{}
+    // BuildTable(ParseInventoryFilePath(), tablewriter.NewWriter(buf))
+    //fmt.Println(buf.String())
 }
 
 func BuildTable(filePath string, table *tablewriter.Table) {
