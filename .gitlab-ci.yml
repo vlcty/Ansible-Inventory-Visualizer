@@ -12,12 +12,7 @@ build:
         # Downloading dependencies
         - go get github.com/go-ini/ini
         - go get github.com/olekukonko/tablewriter
+        # Run the tests
+        - go test
         # Build the binary
         - go build InventoryVisualizer.go
-        # Run some tests
-        # - "ls -1 test_inventories | xargs -i ./InventoryVisualizer test_inventories/{}"
-        - "./InventoryVisualizer test_inventories/group_vars"
-        - "./InventoryVisualizer test_inventories/group_vars_and_children"
-        - "./InventoryVisualizer test_inventories/server_without_group"
-        - "./InventoryVisualizer test_inventories/servers_with_inline_variables"
-        - "./InventoryVisualizer test_inventories/simple_valid_inventory"

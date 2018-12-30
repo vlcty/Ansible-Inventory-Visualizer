@@ -1,4 +1,4 @@
-# Sourc: https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html
+# Source: https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html
 
 [webservers]
 foo.example.com

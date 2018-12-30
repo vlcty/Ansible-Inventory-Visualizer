@@ -1,157 +1,173 @@
 package main
 
 import (
-    "fmt"
-    "os"
-    "strings"
-    "sort"
-    // "io"
-    // "bytes"
+	"flag"
+	"fmt"
+	"os"
+	"sort"
+	"strings"
 
-    "github.com/go-ini/ini"
-    "github.com/olekukonko/tablewriter"
+	"github.com/go-ini/ini"
+	"github.com/olekukonko/tablewriter"
 )
 
 const (
-    REPLACE_ALL int = -1
-    EXIT_NO_ERROR int = 0
-    EXIT_ERROR int = 1
+	REPLACE_ALL int = -1
+	EXIT_ERROR  int = 1
 )
 
 func main() {
-    BuildTable(ParseInventoryFilePath(), tablewriter.NewWriter(os.Stdout))
+	inventoryFilePath := flag.String("inventory", "", "Path to the inventory file")
+	rawServerFilter := flag.String("filter", "", "Comma seperated list to filter servers")
+	flag.Parse()
 
-    // buf := &bytes.Buffer{}
-    // BuildTable(ParseInventoryFilePath(), tablewriter.NewWriter(buf))
-    //fmt.Println(buf.String())
+    CheckInventoryFilePath(*inventoryFilePath)
+    serverFilter := ParseServerFilter(*rawServerFilter)
+
+	table := BuildTable(*inventoryFilePath, serverFilter)
+	fmt.Println(table)
 }
 
-func BuildTable(filePath string, table *tablewriter.Table) {
-    cfg := LoadPassedIniFile(filePath)
+func ParseServerFilter(rawServerFilter string) []string {
+    serverFilter := make([]string, 0)
 
-    headers := ExtractHeaders(cfg)
-
-    table.SetHeader(headers)
-
-    data := make([][]string, 0)
-
-    for _, currentServer := range ExtractServers(cfg) {
-        row := make([]string, len(headers) + 1)
-
-        for index, currentSection := range headers {
-            if index == 0 {
-                row[index] = currentServer
-            } else if cfg.Section(currentSection).HasKey(currentServer) {
-                row[index] = "X"
-            } else {
-                row[index] = ""
-            }
+    for _, server := range strings.Split(rawServerFilter, ",") {
+        /*
+         * This bugged me a bit in go. Extract from the strings.Split documentation:
+         *    If s does not contain sep and sep is not empty, Split returns a slice of length 1 whose only element is s.
+         * However my string is empty, so strings.Split doesn't add s but an empty string there is never a slice with length of 0
+         * Filter empty server out
+         */
+        if server != "" {
+            serverFilter = append(serverFilter, server)
         }
-
-        data = append(data, row)
     }
 
-    table.AppendBulk(data)
-    table.SetBorder(false)
-    table.Render()
+    return serverFilter
+}
 
-    os.Exit(EXIT_NO_ERROR)
+func BuildTable(inventoryFilePath string, serverFilter []string) string {
+	cfg := LoadPassedIniFile(inventoryFilePath)
+
+	tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
+
+	headers := ExtractHeaders(cfg)
+	servers := ExtractServers(cfg, serverFilter)
+	data := make([][]string, 0)
+
+	table.SetHeader(headers)
+
+	for _, currentServer := range servers {
+		row := make([]string, len(headers)+1)
+
+		for index, currentSection := range headers {
+			if index == 0 {
+				row[index] = currentServer
+			} else if cfg.Section(currentSection).HasKey(currentServer) {
+				row[index] = "X"
+			} else {
+				row[index] = ""
+			}
+		}
+
+		data = append(data, row)
+	}
+
+	table.AppendBulk(data)
+	table.SetBorder(false)
+	table.Render()
+
+	return tableString.String()
 }
 
 func LoadPassedIniFile(filePath string) *ini.File {
-    cfg, err := ini.LoadSources(ini.LoadOptions{
-            KeyValueDelimiters: " \n",
-    }, filePath)
+	cfg, err := ini.LoadSources(ini.LoadOptions{
+		KeyValueDelimiters: " \n",
+	}, filePath)
 
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        os.Exit(EXIT_ERROR)
-    }
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(EXIT_ERROR)
+	}
 
-    return cfg
+	return cfg
 }
 
 func ExtractHeaders(cfg *ini.File) []string {
-    headers := make([]string, 0)
+	headers := make([]string, 0)
 
-    headers = append(headers, "Server")
+	headers = append(headers, "Server")
 
-    for _, item := range cfg.SectionStrings() {
-        if ! IsUnwantedSection(item) {
-            headers = append(headers, item)
-        }
-    }
+	for _, item := range cfg.SectionStrings() {
+		if !IsUnwantedSection(item) {
+			headers = append(headers, item)
+		}
+	}
 
-    sort.Strings(headers)
+	sort.Strings(headers)
 
-    return headers;
+	return headers
 }
 
-func ExtractServers(cfg *ini.File) []string {
-    servers := make([]string, 0)
+func ExtractServers(cfg *ini.File, serverFilter []string) []string {
+	servers := make([]string, 0)
 
-    for _, currentSection := range cfg.Sections() {
-        if IsUnwantedSection(currentSection.Name()) {
-            continue
-        }
+	for _, currentSection := range cfg.Sections() {
+		if IsUnwantedSection(currentSection.Name()) {
+			continue
+		}
 
-        for _, currentServer := range currentSection.KeyStrings() {
-            if IsServerAlreadyKnown(currentServer, servers) == false {
-                servers = append(servers, currentServer)
+		for _, currentServer := range currentSection.KeyStrings() {
+            if len(serverFilter) != 0 && ! IsServerInSlice(currentServer, serverFilter) {
+                continue
             }
-        }
-    }
 
-    sort.Strings(servers)
+			if ! IsServerInSlice(currentServer, servers) {
+				servers = append(servers, currentServer)
+			}
+		}
+	}
 
-    return servers
+	sort.Strings(servers)
+
+	return servers
 }
 
 func IsUnwantedSection(sectionName string) bool {
-    unwanted := false
+	unwanted := false
 
-    if sectionName == "DEFAULT" || strings.HasSuffix(sectionName, ":vars") || strings.Index(sectionName, ":") != -1 {
-        unwanted = true
-    }
+	if sectionName == "DEFAULT" || strings.HasSuffix(sectionName, ":vars") || strings.Index(sectionName, ":") != -1 {
+		unwanted = true
+	}
 
-    return unwanted
+	return unwanted
 }
 
-func IsServerAlreadyKnown(server string, servers []string) bool {
-    found := false
+func IsServerInSlice(server string, servers []string) bool {
+	found := false
 
-    for _, currentServer := range servers {
-        if currentServer == server {
-            found = true
-            break
-        }
-    }
+	for _, currentServer := range servers {
+		if currentServer == server {
+			found = true
+			break
+		}
+	}
 
-    return found
+	return found
 }
 
-func ParseInventoryFilePath() string {
-    if len(os.Args) > 1 {
-        path := os.Args[1]
-
-        _, err := os.Stat(path)
+func CheckInventoryFilePath(inventoryFilePath string) {
+    if inventoryFilePath == "" {
+        fmt.Fprintln(os.Stderr, "No inventory file path given")
+        os.Exit(EXIT_ERROR)
+    } else {
+        _, err := os.Stat(inventoryFilePath)
 
         if os.IsNotExist(err) {
             fmt.Fprintln(os.Stderr, "Inventory file not found")
             os.Exit(EXIT_ERROR)
         }
 
-        return path
-    } else {
-        fmt.Fprintln(os.Stderr, "No inventory file given")
-        os.Exit(EXIT_ERROR)
-        return ""
     }
 }
-
-
-// func ExamineStringArray(array []string) {
-//     for index, item := range array {
-//         fmt.Printf("Index: %-2d Value: %s\n", index, item)
-//     }
-// }
