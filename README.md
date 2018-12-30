@@ -30,6 +30,23 @@ Then you can build it:
 
 That's it.
 
+## Filter for specific hosts
+
+You can filter for specific hosts passing a comma seperated list. For example:
+
+```
+:-$ ./InventoryVisualizer --inventory test_inventories/simple_valid_inventory --filter one.example.com,two.example.com
+```
+
+The output:
+
+```
+      SERVER      | DBSERVERS | WEBSERVERS |
++-----------------+-----------+------------+--+
+  one.example.com | X         |            |
+  two.example.com | X         |            |
+```
+
 ## But ... why?
 
 Good question! While developing this application I thought it was a good idea. Then I ran it against some inventories I found online (most of them from the official documentation) and they came up nice. Then I tested it agains the one from my work and it basically blew up. Too much columns and rows. You've been warned :-)
